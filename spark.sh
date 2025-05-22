@@ -15,4 +15,3 @@ spark-submit \
   --conf spark.sql.files.maxPartitionBytes=64m \
   --conf spark.sql.shuffle.partitions=200 \
   /app/jobs/load_fraud_labels_to_hdfs.py
-

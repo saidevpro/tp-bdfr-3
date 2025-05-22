@@ -82,6 +82,7 @@ services:
     volumes:
       - ./src/spark:/app
       - hadoop_conf:/opt/hadoop-2.7.4/etc/hadoop
+      - ./data:/data
     env_file:
       - ./env/hadoop.env
 
