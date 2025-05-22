@@ -1,0 +1,161 @@
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop2.7.4-java8
+    container_name: namenode
+    environment:
+      - CLUSTER_NAME=test-cluster
+    ports:
+      - '50070:50070' # HDFS Web UI
+      - '9000:9000' # HDFS Namenode RPC
+    env_file:
+      - ./env/hadoop.env
+    volumes:
+      - ./data:/data
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop2.7.4-java8
+    container_name: datanode
+    environment:
+      - CLUSTER_NAME=test-cluster
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+    depends_on:
+      - namenode
+    ports:
+      - '50075:50075' # HDFS Datanode Web UI
+    env_file:
+      - ./env/hadoop.env
+
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop2.7.4-java8
+    container_name: resourcemanager
+    depends_on:
+      - namenode
+      - datanode
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+    ports:
+      - '8088:8088' # Resource Manager UI
+    env_file:
+      - ./env/hadoop.env
+
+  nodemanager:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop2.7.4-java8
+    container_name: nodemanager
+    depends_on:
+      - resourcemanager
+      - namenode
+      - datanode
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+    env_file:
+      - ./env/hadoop.env
+
+  historyserver:
+    image: bde2020/hadoop-historyserver:2.0.0-hadoop2.7.4-java8
+    container_name: historyserver
+    depends_on:
+      - resourcemanager
+      - namenode
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+    ports:
+      - '8188:8188' # History Server UI
+    env_file:
+      - ./env/hadoop.env
+
+  spark-master:
+    image: bitnami/spark:3.5.4
+    container_name: spark-master
+    environment:
+      - HADOOP_CONF_DIR=/opt/hadoop-2.7.4/etc/hadoop
+      - YARN_CONF_DIR=/opt/hadoop/etc/hadoop
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
+
+    ports:
+      - '7077:7077' # Spark Master RPC
+      - '8080:8080' # Spark Master Web UI
+    depends_on:
+      - namenode
+      - resourcemanager
+    volumes:
+      - ./src/spark:/app
+      - hadoop_conf:/opt/hadoop-2.7.4/etc/hadoop
+    env_file:
+      - ./env/hadoop.env
+
+  spark-worker:
+    image: bitnami/spark:3.5.4
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_SQL_WAREHOUSE_DIR=hdfs://namenode:9000/hive/warehouse
+      - HADOOP_CONF_DIR=/opt/hadoop-2.7.4/etc/hadoop
+      - YARN_CONF_DIR=/opt/hadoop-2.7.4/etc/hadoop
+      - SPARK_OPTS= \
+        --conf spark.network.timeout=300s \
+        --conf spark.executor.memory=2g \
+        --conf spark.yarn.executor.memoryOverhead=1g
+    ports:
+      - '8081:8081' # Spark Worker Web UI
+    depends_on:
+      - spark-master
+
+  hive-metastore:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: hive-metastore
+    environment:
+      - HIVE_EXECUTION_ENGINE=spark
+      - HIVE_CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - HIVE_METASTORE_URIS=thrift://localhost:9083
+      - SPARK_MASTER=spark://spark-master:7077
+      - HIVE_WAREHOUSE_DIR=hdfs://namenode:9000/hive/warehouse
+      - SERVICE_PRECONDITION=namenode:9000 hive-metastore-postgresql:5432
+    ports:
+      - '9083:9083'
+    depends_on:
+      - datanode
+      - namenode
+      - postgres-db
+      - mariadb
+    env_file:
+      - ./env/hadoop-hive.env
+    command: ['/opt/hive/bin/hive', '--service metastore']
+
+  hive-metastore-postgresql:
+    image: bde2020/hive-metastore-postgresql:2.3.0
+    container_name: hive-metastore-postgresql
+
+  postgres-db:
+    image: postgres:latest
+    container_name: datamart-db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: datamart
+    ports:
+      - '5433:5432'
+
+  mariadb:
+    image: mariadb:latest
+    container_name: mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: bdd
+      MARIADB_USER: root
+      MARIADB_PASSWORD: root
+    ports:
+      - '3306:3306'
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+volumes:
+  mariadb_data:
+  hadoop_conf:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./hadoop_conf_host
