@@ -3,6 +3,8 @@ spark-submit --master yarn --deploy-mode client --driver-memory 3g --executor-me
 python .\seeders\transactions.py .\data\transactions_data.csv --situation-date 2025-05-23 --percentage 100 --batch-size 10000 --clear
 spark-submit --master yarn --deploy-mode client --driver-memory 3g --executor-memory 3g --jars /app/bin/mysql-connector-j-9.2.0.jar /app/jobs/get_transactions_from_bd.py
 
+docker exec -it spark-master bash
+
 spark-submit --master yarn --deploy-mode client --driver-memory 4g --executor-memory 4g  /app/jobs/load_files_to_hdfs.py
 
 spark-submit \

@@ -13,6 +13,7 @@ import random
 import argparse
 import mysql.connector as mariadb
 from mysql.connector import errorcode
+import pymysql as mariadb
 
 def read_csv_generator(filepath):
   """Yields the header first, then each data row as a list."""
@@ -33,7 +34,8 @@ def connect_mariadb(host, user, password, database, port=3306):
       user=user,
       password=password,
       database=database,
-      autocommit=False    # we’ll commit manually
+      autocommit=False,   
+      charset='utf8mb4'
     )
     return conn
   except mariadb.Error as e:
