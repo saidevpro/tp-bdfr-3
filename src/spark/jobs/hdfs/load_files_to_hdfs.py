@@ -18,8 +18,14 @@ df = (
     .option("header", "true")
     .csv(cards_data_path))
 
+df.show()
+
 df = df.withColumn("situation_date", F.current_date())
+
+df.show()
+
 df.write \
+  .option("header", "true") \
   .mode("overwrite") \
   .partitionBy("situation_date") \
   .csv(f"{hdfs_output_path}/cards_data")
@@ -32,7 +38,9 @@ udf = (
     .csv(users_data_path))
 
 udf = udf.withColumn("situation_date", F.current_date())
+
 udf.write \
+  .option("header", "true") \
   .mode("overwrite") \
   .partitionBy("situation_date") \
   .csv(f"{hdfs_output_path}/users_data")
@@ -59,6 +67,7 @@ fdf = (
 
 fdf = fdf.withColumn("situation_date", F.current_date())
 fdf.write \
+  .option("header", "true") \
   .mode("overwrite") \
   .partitionBy("situation_date") \
   .csv(f"{hdfs_output_path}/fraud_labels")

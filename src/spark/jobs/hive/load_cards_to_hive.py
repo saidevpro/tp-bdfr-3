@@ -1,16 +1,15 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import regexp_extract, regexp_replace, col
+from pyspark.sql import SparkSession, functions as F
 import re
 
 spark = SparkSession.builder \
-  .appName("Loads transactions to hive") \
+  .appName("Loads MCC codes to hive") \
   .config("spark.hadoop.fs.defaultFS", "hdfs://namenode:9000") \
   .config("spark.sql.catalogImplementation", "hive") \
   .config("hive.metastore.uris", "thrift://hive-metastore:9083") \
   .enableHiveSupport() \
   .getOrCreate()
 
-base_path = "/raw/transactions"
+base_path = "/raw/cards_data"
 
 hadoop_conf = spark._jsc.hadoopConfiguration()
 fs = spark._jvm.org.apache.hadoop.fs.FileSystem.get(hadoop_conf)
@@ -28,19 +27,24 @@ if not dates:
   raise RuntimeError(f"No partitions found under {base_path}")
 
 latest = max(dates)
-latest_path = f"{base_path}/situation_date={latest}"
+path = f"{base_path}/situation_date={latest}"
 
-df = spark.read.parquet(latest_path)
+df = spark.read.csv(path, header=True, inferSchema=True)
 
 df = df.withColumn(
-  "currency", regexp_extract(col("amount"), r"^(\D+)", 1)
+  "card_number",
+  F.regexp_replace(F.col("card_number"), r".(?=.{3})", "*")
 ).withColumn(
-  "amount", regexp_replace(col("amount"), r"[^0-9\.-]", "").cast("double")
+  "credit_limit_currency", F.regexp_extract(F.col("credit_limit"), r"^(\D+)", 1)
+).withColumn(
+  "credit_limit", F.regexp_replace(F.col("credit_limit"), r"[^0-9\.-]", "").cast("double")
 )
+
+df = df.drop("cvv")
 
 df.write \
   .format("parquet") \
   .mode("overwrite") \
-  .saveAsTable("default.transactions")   
+  .saveAsTable("default.cards")   
 
 spark.stop()
