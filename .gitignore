@@ -1,3 +1,4 @@
 data/*
 hadoop_conf_host
 venv
+api/api
