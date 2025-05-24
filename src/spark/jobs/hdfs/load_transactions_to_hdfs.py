@@ -1,4 +1,4 @@
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, functions as F
 
 spark = (
   SparkSession.builder
@@ -44,9 +44,18 @@ df = spark.read \
   .load()
 
 hdfs_output_path = "hdfs://namenode:9000/raw/transactions"
+
+df = (
+  df
+    .withColumn("year",  F.year("situation_date"))
+    .withColumn("month", F.month("situation_date"))
+)
+
+df = df.repartition("situation_date", "year", "month")
+
 df.write \
   .mode("append") \
-  .partitionBy("situation_date") \
+  .partitionBy("situation_date", "year", "month") \
   .parquet(hdfs_output_path)
 
 spark.stop()

@@ -18,12 +18,7 @@ df = (
     .option("header", "true")
     .csv(cards_data_path))
 
-df.show()
-
 df = df.withColumn("situation_date", F.current_date())
-
-df.show()
-
 df.write \
   .option("header", "true") \
   .mode("overwrite") \

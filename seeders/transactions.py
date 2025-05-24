@@ -13,7 +13,7 @@ import random
 import argparse
 import mysql.connector as mariadb
 from mysql.connector import errorcode
-import pymysql as mariadb
+# import pymysql as mariadb
 
 def read_csv_generator(filepath):
   """Yields the header first, then each data row as a list."""
