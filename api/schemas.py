@@ -5,6 +5,11 @@ from pydantic.generics import GenericModel
 from pydantic import BaseModel, ConfigDict
 
 
+class RouteInfoSchema(BaseModel):
+  path: str
+  name: str
+  methods: List[str]
+  
 class UserSchema(BaseModel):
   model_config = ConfigDict(from_attributes=True) 
   

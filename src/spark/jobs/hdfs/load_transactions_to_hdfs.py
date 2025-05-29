@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession, functions as F
 
 spark = (
   SparkSession.builder
-  .appName("Read Data From BD Write in HDFS")
+  .appName("Read transactions data From BD Write it in HDFS")
   .enableHiveSupport()
   .getOrCreate()
 )

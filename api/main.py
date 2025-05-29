@@ -1,19 +1,36 @@
 from fastapi import FastAPI, APIRouter, Depends, Query, HTTPException, Request
 from sqlalchemy.orm import Session, selectinload
+from fastapi.routing import APIRoute
 from typing import List
 from database import get_db
 from models import Transaction, User
 from datetime import date
-from schemas import TransactionSchema, TransactionFullSchema, UserSchema, PaginationResponse
+from schemas import TransactionSchema, TransactionFullSchema, UserSchema, PaginationResponse, RouteInfoSchema
 
 app = FastAPI()
 api = APIRouter(prefix="/api")  
 
-@app.get("/")
-def read_root():
-  return {"Hello": "World"}
+@api.get(
+  "/", 
+  response_model=List[RouteInfoSchema],
+  summary="List all API routes"
+)
+def read_root(request: Request):
+  route_list = []
+  for route in request.app.routes:
+    if isinstance(route, APIRoute):
+      route_list.append(RouteInfoSchema(
+        path=route.path,
+        name=route.name,
+        methods=sorted(route.methods - {"HEAD", "OPTIONS"})
+      ))
+  return route_list
 
-@api.get("/transactions/{tx_id}", response_model=TransactionFullSchema)
+@api.get(
+  "/transactions/{tx_id}", 
+  response_model=TransactionFullSchema,
+  summary="Get a specific transaction with the client info"
+)
 def get_transaction(tx_id: int, db: Session = Depends(get_db)):
   tx = (
     db.query(Transaction)
@@ -30,7 +47,7 @@ def get_transaction(tx_id: int, db: Session = Depends(get_db)):
 @api.get(
   "/transactions/",
   response_model=PaginationResponse[TransactionSchema],
-  summary="List transactions with page & limit pagination"
+  summary="List transactions with pagination"
 )
 def get_transactions(
   request: Request,
@@ -70,7 +87,7 @@ def get_transactions(
 @api.get(
   "/users/",
   response_model=PaginationResponse[UserSchema],
-  summary="List transactions with page & limit pagination"
+  summary="List users with pagination"
 )
 def get_users(
   request: Request,
